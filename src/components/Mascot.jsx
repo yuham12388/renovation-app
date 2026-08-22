@@ -506,12 +506,20 @@ export default function Mascot() {
       </div>
 
       {/* 智能客服對話框 */}
-      {chatOpen && (
+      {chatOpen && (() => {
+        const vw = typeof window !== 'undefined' ? window.innerWidth : 440
+        const chatW = 300
+        const maxLeft = vw - chatW - 12
+        const leftVal = chatOnLeft
+          ? Math.max(12, pos.x - chatW - 12)
+          : Math.max(12, Math.min(pos.x + 36, maxLeft))
+        return (
         <div
-          className="fixed z-50 w-[300px] max-w-[calc(100%-24px)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-[chatSlideUp_0.25s_ease]"
+          className="fixed z-50 w-[300px] max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-[chatSlideUp_0.25s_ease]"
           style={{
-            left: chatOnLeft ? `${Math.max(12, pos.x - 300 - 12)}px` : `${Math.max(12, Math.min(pos.x + 36, 440 - 312))}px`,
-            top: `${Math.min(pos.y + 10, 400)}px`
+            left: `${leftVal}px`,
+            top: `${Math.min(pos.y + 10, 400)}px`,
+            maxWidth: `${vw - 24}px`
           }}
         >
           {/* Header */}
@@ -523,7 +531,7 @@ export default function Mascot() {
                 <div className="text-[10px] opacity-80">線上 · {emo.label}中</div>
               </div>
             </div>
-            <button onClick={() => setChatOpen(false)} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white text-base cursor-pointer hover:bg-white/30 transition-colors">✕</button>
+            <button onClick={() => { setChatOpen(false); setEmotion('happy'); setShowBubble(true) }} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white text-base cursor-pointer hover:bg-white/30 transition-colors">✕</button>
           </div>
 
           {/* Messages */}
@@ -605,7 +613,8 @@ export default function Mascot() {
             </button>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* 公司簡介 Modal */}
       {showCompanyInfo && (
