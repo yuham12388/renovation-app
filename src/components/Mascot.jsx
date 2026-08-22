@@ -38,7 +38,7 @@ export default function Mascot() {
   ])
   const [showQuick, setShowQuick] = useState(true)
   const [emotion, setEmotion] = useState('happy')
-  const [pos, setPos] = useState({ x: 190, y: 12 })
+  const [pos, setPos] = useState({ x: typeof window !== 'undefined' ? Math.max(8, (window.innerWidth - 36) / 2) : 190, y: 12 })
   const [showBubble, setShowBubble] = useState(true)
   const [inputText, setInputText] = useState('')
   const [isListening, setIsListening] = useState(false)
@@ -169,12 +169,11 @@ export default function Mascot() {
 
   const onPointerDown = useCallback((e) => {
     if (e.target.closest('[data-bubble]')) return
-    const container = document.querySelector('.app-frame')
-    if (!container) return
-    const rect = container.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
     dragOffset.current = {
-      x: e.clientX - rect.left - pos.x,
-      y: e.clientY - rect.top - pos.y
+      x: e.clientX - pos.x,
+      y: e.clientY - pos.y
     }
     setIsDragging(true)
     setShowBubble(false)
@@ -183,13 +182,12 @@ export default function Mascot() {
 
   const onPointerMove = useCallback((e) => {
     if (!isDragging) return
-    const container = document.querySelector('.app-frame')
-    if (!container) return
-    const rect = container.getBoundingClientRect()
-    let newX = e.clientX - rect.left - dragOffset.current.x
-    let newY = e.clientY - rect.top - dragOffset.current.y
-    newX = Math.max(4, Math.min(newX, rect.width - 36))
-    newY = Math.max(4, Math.min(newY, rect.height - 36))
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    let newX = e.clientX - dragOffset.current.x
+    let newY = e.clientY - dragOffset.current.y
+    newX = Math.max(4, Math.min(newX, vw - 40))
+    newY = Math.max(4, Math.min(newY, vh - 40))
     setPos({ x: newX, y: newY })
   }, [isDragging])
 
@@ -313,7 +311,7 @@ export default function Mascot() {
   ]
 
   const isEntry = location.pathname === '/'
-  const chatOnLeft = pos.x > 200
+  const chatOnLeft = pos.x > (typeof window !== 'undefined' ? window.innerWidth / 2 : 200)
   const emo = EMOTIONS[emotion] || EMOTIONS.happy
 
   // ===== 表情渲染（座標已調整為水滴形臉部位置） =====
@@ -473,11 +471,11 @@ export default function Mascot() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onClick={handleSpriteClick}
-        className={`absolute z-50 select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        className={`fixed z-50 select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
         style={{
           left: `${pos.x}px`,
           top: `${pos.y}px`,
-          transition: isDragging ? 'none' : 'left 0.1s ease',
+          transition: isDragging ? 'none' : 'left 0.1s ease, top 0.1s ease',
           touchAction: 'none'
         }}
       >
@@ -510,7 +508,7 @@ export default function Mascot() {
       {/* 智能客服對話框 */}
       {chatOpen && (
         <div
-          className="absolute z-50 w-[300px] max-w-[calc(100%-24px)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-[chatSlideUp_0.25s_ease]"
+          className="fixed z-50 w-[300px] max-w-[calc(100%-24px)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-[chatSlideUp_0.25s_ease]"
           style={{
             left: chatOnLeft ? `${Math.max(12, pos.x - 300 - 12)}px` : `${Math.max(12, Math.min(pos.x + 36, 440 - 312))}px`,
             top: `${Math.min(pos.y + 10, 400)}px`
