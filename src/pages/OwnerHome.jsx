@@ -204,7 +204,7 @@ export default function OwnerHome() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F8E4E" strokeWidth="2" className="mt-0.5 flex-shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
                   <div>
                     <div className="text-[11px] text-gray-400">公司地址</div>
-                    <div className="text-xs font-medium text-gray-700">台中市西區</div>
+                    <div className="text-xs font-medium text-gray-700">台中市北屯區軍榮五街227巷2弄9號</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5 py-2 border-b border-gray-100">
