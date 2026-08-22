@@ -98,16 +98,27 @@ export async function saveEstimate(data) {
 }
 
 // ===== 案件 =====
-export async function fetchProjects() {
+
+// 屋主用電話號碼查自己的案件
+export async function fetchProjectsByPhone(phone) {
   if (!isSupabaseReady) return mockProjects
   const { data, error } = await supabase
     .from('projects')
     .select('*, project_stages(*)')
+    .eq('owner_phone', phone)
     .order('created_at', { ascending: false })
-  if (error) throw error
-  return data || []
+  if (error) {
+    console.warn('[fetchProjectsByPhone] error:', error.message)
+    return []
+  }
+  // 確保 project_stages 有排序
+  return (data || []).map(p => ({
+    ...p,
+    project_stages: (p.project_stages || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+  }))
 }
 
+// 用 ID 查單一案件（含階段）
 export async function fetchProjectById(id) {
   if (!isSupabaseReady) return mockProjects[0]
   const { data, error } = await supabase
@@ -116,6 +127,9 @@ export async function fetchProjectById(id) {
     .eq('id', id)
     .single()
   if (error) throw error
+  if (data.project_stages) {
+    data.project_stages.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+  }
   return data
 }
 
@@ -266,6 +280,24 @@ export async function uploadImage(file, bucket = 'case-images') {
   return publicUrl
 }
 
+// ===== 施工節點定義（15 個，按順序）=====
+export const PROJECT_STAGES = [
+  '工程保護',
+  '拆除',
+  '水電',
+  '泥作',
+  '冷氣拉管',
+  '木作',
+  '油漆',
+  '系統櫃下單',
+  '系統櫃安裝',
+  '燈具安裝',
+  '冷氣安裝',
+  '屋主驗收',
+  '保護拆除',
+  '清潔'
+]
+
 // ===== Mock 輔助 =====
 function mockResponse(data) {
   return new Promise(resolve => setTimeout(() => resolve(data), 500))
@@ -273,16 +305,27 @@ function mockResponse(data) {
 
 const mockProjects = [
   {
-    id: 'P-2026-0312',
-    title: '西區張宅 · 現代簡約翻新',
+    id: 'mock-001',
+    title: '示範案件 · 現代簡約翻新',
     address: '台中市西區',
     ping: 28,
     status: '施工中',
-    progress: 65,
+    progress: 50,
     start_date: '2026/03/01',
     end_date: '2026/05/15',
     budget: '180萬',
-    designer: '陳設計師'
+    designer: '陳設計師',
+    owner_phone: '0912345678',
+    project_stages: PROJECT_STAGES.map((name, i) => ({
+      id: `stage-${i}`,
+      name,
+      status: i < 6 ? 'done' : i === 6 ? 'active' : 'pending',
+      sort_order: i,
+      start_date: '',
+      end_date: '',
+      detail: '',
+      note: ''
+    }))
   }
 ]
 

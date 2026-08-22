@@ -137,6 +137,58 @@ export async function updateProjectStatus(id, { status, progress }) {
   return data
 }
 
+// 更新施工節點狀態
+export async function updateStageStatus(stageId, { status, note, start_date, end_date }) {
+  const payload = { updated_at: new Date().toISOString() }
+  if (status !== undefined) payload.status = status
+  if (note !== undefined) payload.note = note
+  if (start_date !== undefined) payload.start_date = start_date
+  if (end_date !== undefined) payload.end_date = end_date
+  const { data, error } = await supabase.from('project_stages').update(payload).eq('id', stageId)
+  if (error) throw error
+  return data
+}
+
+// 新增案件 + 自動建 14 個施工節點
+export async function createProject(form) {
+  const STAGES = [
+    '工程保護', '拆除', '水電', '泥作', '冷氣拉管', '木作', '油漆',
+    '系統櫃下單', '系統櫃安裝', '燈具安裝', '冷氣安裝', '屋主驗收', '保護拆除', '清潔'
+  ]
+
+  const { data: project, error: projErr } = await supabase
+    .from('projects')
+    .insert({
+      title: form.title,
+      address: form.address || null,
+      ping: form.ping ? Number(form.ping) : null,
+      status: form.status || 'planning',
+      progress: 0,
+      budget: form.budget || null,
+      designer: form.designer || null,
+      start_date: form.start_date || null,
+      end_date: form.end_date || null,
+      owner_phone: form.owner_phone || null,
+      owner_name: form.owner_name || null
+    })
+    .select()
+    .single()
+
+  if (projErr) throw projErr
+
+  // 自動建 14 個施工節點
+  const stageRows = STAGES.map((name, i) => ({
+    project_id: project.id,
+    name,
+    status: 'pending',
+    sort_order: i
+  }))
+  const { error: stageErr } = await supabase.from('project_stages').insert(stageRows)
+  if (stageErr) console.warn('[createProject] stages insert failed:', stageErr.message)
+
+  return project
+}
+
 export async function updateCoopStatus(id, status) {
   const { data, error } = await supabase.from('coop_applications').update({ status }).eq('id', id)
   if (error) throw error

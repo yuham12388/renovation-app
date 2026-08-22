@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listProjects, listProjectStages, updateProjectStatus, deleteRow } from '../lib/adminApi'
+import { listProjects, listProjectStages, updateProjectStatus, updateStageStatus, deleteRow, createProject } from '../lib/adminApi'
 
 const STATUSES = [
   { value: 'planning', label: '規劃中', color: '#7B5BE0' },
@@ -7,6 +7,11 @@ const STATUSES = [
   { value: '驗收中', label: '驗收中', color: '#3A77E8' },
   { value: '完工', label: '完工', color: '#0F8E4E' },
   { value: '保固中', label: '保固中', color: '#0A6B3A' }
+]
+const STAGE_STATUSES = [
+  { value: 'pending', label: '待施工', color: '#999' },
+  { value: 'active', label: '施工中', color: '#E8A700' },
+  { value: 'done', label: '已完成', color: '#0F8E4E' }
 ]
 const fmtDate = (s) => s ? new Date(s).toLocaleDateString('zh-TW') : '-'
 const statusMeta = (s) => STATUSES.find(x => x.value === s) || STATUSES[0]
@@ -17,6 +22,7 @@ export default function AdminProjectsPage() {
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState(null)
   const [stages, setStages] = useState([])
+  const [showCreate, setShowCreate] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -51,6 +57,23 @@ export default function AdminProjectsPage() {
     if (selected?.id === id) setSelected({ ...selected, progress: Number(progress) })
   }
 
+  const onStageStatus = async (stageId, status) => {
+    await updateStageStatus(stageId, { status })
+    // 重新載入階段
+    if (selected) {
+      const s = await listProjectStages(selected.id)
+      setStages(s)
+    }
+  }
+
+  const onStageNote = async (stageId, note) => {
+    await updateStageStatus(stageId, { note })
+    if (selected) {
+      const s = await listProjectStages(selected.id)
+      setStages(s)
+    }
+  }
+
   const onDelete = async (id) => {
     if (!confirm('確定刪除這個案件？')) return
     await deleteRow('projects', id)
@@ -58,14 +81,28 @@ export default function AdminProjectsPage() {
     load()
   }
 
+  const onCreate = async (form) => {
+    try {
+      await createProject(form)
+      setShowCreate(false)
+      load()
+    } catch (e) {
+      alert('建立失敗：' + e.message)
+    }
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ color: '#04342C', fontSize: 22, margin: 0 }}>🏗️ 案件管理</h2>
-        <div style={{ display: 'flex', gap: 12, fontSize: 13, color: '#666' }}>
+        <div style={{ display: 'flex', gap: 12, fontSize: 13, color: '#666', alignItems: 'center' }}>
           <span>總數 <b style={{ color: '#0A6B3A' }}>{rows.length}</b></span>
           <span>施工中 <b style={{ color: '#E8A700' }}>{active}</b></span>
           <span>已完工 <b style={{ color: '#0F8E4E' }}>{done}</b></span>
+          <button onClick={() => setShowCreate(true)} style={{
+            padding: '6px 14px', background: '#0F8E4E', color: '#fff',
+            border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontWeight: 600
+          }}>+ 新建案件</button>
         </div>
       </div>
 
@@ -76,15 +113,15 @@ export default function AdminProjectsPage() {
         ))}
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+      <div style={{ background: '#fff', borderRadius: 10, overflow: 'auto', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 800 }}>
           <thead style={{ background: '#F5F8F5' }}>
             <tr>
               <th style={th}>案件名稱</th>
               <th style={th}>地址</th>
               <th style={th}>坪數</th>
+              <th style={th}>屋主電話</th>
               <th style={th}>設計師</th>
-              <th style={th}>預算</th>
               <th style={th}>進度</th>
               <th style={th}>狀態</th>
               <th style={th}>開工</th>
@@ -103,8 +140,8 @@ export default function AdminProjectsPage() {
                   <td style={td}><b>{r.title}</b></td>
                   <td style={td}>{r.address || '-'}</td>
                   <td style={td}>{r.ping ? `${r.ping} 坪` : '-'}</td>
+                  <td style={td}>{r.owner_phone || '-'}</td>
                   <td style={td}>{r.designer || '-'}</td>
-                  <td style={td}>{r.budget || '-'}</td>
                   <td style={td}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <div style={{ width: 60, height: 6, background: '#E5E5E5', borderRadius: 3, overflow: 'hidden' }}>
@@ -127,11 +164,17 @@ export default function AdminProjectsPage() {
         </table>
       </div>
 
+      {/* 詳情 Modal */}
       {selected && (
         <div onClick={() => setSelected(null)} style={modalBg}>
-          <div onClick={e => e.stopPropagation()} style={{ ...modalCard, maxWidth: 720 }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...modalCard, maxWidth: 760 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#0A6B3A' }}>{selected.title}</h3>
+              <div>
+                <h3 style={{ margin: 0, color: '#0A6B3A' }}>{selected.title}</h3>
+                <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+                  屋主電話：{selected.owner_phone || '未設定'}
+                </div>
+              </div>
               <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#888' }}>×</button>
             </div>
 
@@ -145,7 +188,7 @@ export default function AdminProjectsPage() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <div style={labelStyle}>狀態</div>
+              <div style={labelStyle}>案件狀態</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {STATUSES.map(s => (
                   <button key={s.value} onClick={() => onStatus(selected.id, s.value)} style={{
@@ -159,7 +202,7 @@ export default function AdminProjectsPage() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <div style={labelStyle}>進度（{selected.progress || 0}%）</div>
+              <div style={labelStyle}>整體進度（{selected.progress || 0}%）</div>
               <input
                 type="range" min="0" max="100" step="5"
                 value={selected.progress || 0}
@@ -169,27 +212,181 @@ export default function AdminProjectsPage() {
               />
             </div>
 
-            {stages.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={labelStyle}>施工階段</div>
-                {stages.map(st => (
-                  <div key={st.id} style={{ padding: '8px 12px', background: '#F5F8F5', borderRadius: 6, marginBottom: 4, fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{st.name}</span>
-                    <span style={{ color: st.status === 'done' ? '#0F8E4E' : '#888' }}>{st.status}</span>
-                  </div>
-                ))}
+            {/* 施工節點管理 */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ ...labelStyle, fontSize: 14, fontWeight: 600, color: '#0A6B3A', marginBottom: 8 }}>
+                施工進度節點
               </div>
-            )}
+              {stages.length === 0 ? (
+                <div style={{ ...loadingTd, background: '#F5F8F5', borderRadius: 6 }}>尚無節點資料</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {stages.map((st, idx) => {
+                    const sm = STAGE_STATUSES.find(x => x.value === st.status) || STAGE_STATUSES[0]
+                    return (
+                      <StageRow
+                        key={st.id}
+                        stage={st}
+                        index={idx}
+                        sm={sm}
+                        onStatus={onStageStatus}
+                        onNote={onStageNote}
+                      />
+                    )
+                  })}
+                </div>
+              )}
+            </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20, paddingTop: 16, borderTop: '1px solid #F0F0F0' }}>
               <button onClick={() => onDelete(selected.id)} style={{
                 background: '#FEE', color: '#C33', border: '1px solid #FCC',
                 borderRadius: 6, padding: '6px 14px', fontSize: 13, cursor: 'pointer'
-              }}>刪除</button>
+              }}>刪除案件</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* 新建案件 Modal */}
+      {showCreate && (
+        <CreateProjectModal onClose={() => setShowCreate(false)} onCreate={onCreate} />
+      )}
+    </div>
+  )
+}
+
+function StageRow({ stage, index, sm, onStatus, onNote }) {
+  const [showNote, setShowNote] = useState(false)
+  const [noteText, setNoteText] = useState(stage.note || '')
+
+  return (
+    <div style={{ padding: '10px 12px', background: '#F5F8F5', borderRadius: 8, fontSize: 13 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#999', fontSize: 11, minWidth: 20 }}>{index + 1}.</span>
+          <b style={{ color: '#04342C' }}>{stage.name}</b>
+          <span style={{ ...badge, background: sm.color + '20', color: sm.color }}>{sm.label}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {STAGE_STATUSES.map(s => (
+            <button key={s.value} onClick={() => onStatus(stage.id, s.value)} style={{
+              padding: '3px 8px', fontSize: 11,
+              border: stage.status === s.value ? `1px solid ${s.color}` : '1px solid #E0E0E0',
+              background: stage.status === s.value ? s.color + '15' : '#fff',
+              color: stage.status === s.value ? s.color : '#999',
+              borderRadius: 4, cursor: 'pointer'
+            }}>{s.label}</button>
+          ))}
+        </div>
+      </div>
+      {(stage.start_date || stage.end_date) && (
+        <div style={{ fontSize: 11, color: '#aaa', marginTop: 4, paddingLeft: 28 }}>
+          {stage.start_date}{stage.end_date ? ` ~ ${stage.end_date}` : ''}
+        </div>
+      )}
+      {stage.note && !showNote && (
+        <div style={{ fontSize: 12, color: '#666', marginTop: 4, paddingLeft: 28, cursor: 'pointer' }}
+          onClick={() => { setNoteText(stage.note); setShowNote(true) }}>
+          📝 {stage.note}
+        </div>
+      )}
+      {showNote ? (
+        <div style={{ marginTop: 6, paddingLeft: 28, display: 'flex', gap: 6 }}>
+          <input
+            type="text"
+            value={noteText}
+            onChange={e => setNoteText(e.target.value)}
+            placeholder="輸入備註…"
+            style={{ flex: 1, padding: '4px 8px', fontSize: 12, border: '1px solid #E0E0E0', borderRadius: 4 }}
+          />
+          <button onClick={() => { onNote(stage.id, noteText); setShowNote(false) }}
+            style={{ padding: '4px 10px', fontSize: 11, background: '#0F8E4E', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+            儲存
+          </button>
+          <button onClick={() => setShowNote(false)}
+            style={{ padding: '4px 10px', fontSize: 11, background: '#eee', color: '#666', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+            取消
+          </button>
+        </div>
+      ) : (
+        !stage.note && (
+          <div style={{ marginTop: 4, paddingLeft: 28 }}>
+            <button onClick={() => setShowNote(true)}
+              style={{ fontSize: 11, color: '#0F8E4E', background: 'none', border: 'none', cursor: 'pointer' }}>
+              + 加備註
+            </button>
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
+function CreateProjectModal({ onClose, onCreate }) {
+  const [form, setForm] = useState({
+    title: '', address: '', ping: '', owner_phone: '', owner_name: '',
+    budget: '', designer: '', start_date: '', end_date: '', status: 'planning'
+  })
+
+  const submit = (e) => {
+    e.preventDefault()
+    if (!form.title.trim()) { alert('請輸入案件名稱'); return }
+    if (!form.owner_phone.trim()) { alert('請輸入屋主電話'); return }
+    onCreate(form)
+  }
+
+  return (
+    <div onClick={onClose} style={modalBg}>
+      <div onClick={e => e.stopPropagation()} style={{ ...modalCard, maxWidth: 560 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, color: '#0A6B3A' }}>新建案件</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#888' }}>×</button>
+        </div>
+        <form onSubmit={submit} style={{ display: 'grid', gap: 12, fontSize: 14 }}>
+          <Input label="案件名稱 *" value={form.title} onChange={v => setForm({ ...form, title: v })} placeholder="例：西區張宅 · 現代簡約翻新" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input label="屋主電話 *" value={form.owner_phone} onChange={v => setForm({ ...form, owner_phone: v })} placeholder="0912345678" />
+            <Input label="屋主姓名" value={form.owner_name} onChange={v => setForm({ ...form, owner_name: v })} placeholder="張先生" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input label="地址" value={form.address} onChange={v => setForm({ ...form, address: v })} placeholder="台中市西區" />
+            <Input label="坪數" value={form.ping} onChange={v => setForm({ ...form, ping: v })} placeholder="28" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input label="設計師" value={form.designer} onChange={v => setForm({ ...form, designer: v })} placeholder="陳設計師" />
+            <Input label="預算" value={form.budget} onChange={v => setForm({ ...form, budget: v })} placeholder="180萬" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input label="開工日期" type="date" value={form.start_date} onChange={v => setForm({ ...form, start_date: v })} />
+            <Input label="完工日期" type="date" value={form.end_date} onChange={v => setForm({ ...form, end_date: v })} />
+          </div>
+          <div>
+            <div style={labelStyle}>初始狀態</div>
+            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+              style={{ width: '100%', padding: '8px 10px', border: '1px solid #E0E0E0', borderRadius: 6, fontSize: 14 }}>
+              {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+          <div style={{ fontSize: 12, color: '#888', background: '#F5F8F5', padding: '8px 12px', borderRadius: 6 }}>
+            建立後會自動產生 14 個施工節點：工程保護 → 拆除 → 水電 → 泥作 → 冷氣拉管 → 木作 → 油漆 → 系統櫃下單 → 系統櫃安裝 → 燈具安裝 → 冷氣安裝 → 屋主驗收 → 保護拆除 → 清潔
+          </div>
+          <button type="submit" style={{
+            padding: '10px', background: '#0F8E4E', color: '#fff', border: 'none',
+            borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer'
+          }}>建立案件</button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function Input({ label, value, onChange, placeholder, type = 'text' }) {
+  return (
+    <div>
+      <div style={labelStyle}>{label}</div>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{ width: '100%', padding: '8px 10px', border: '1px solid #E0E0E0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }} />
     </div>
   )
 }
@@ -203,14 +400,14 @@ function Field({ label, value }) {
   )
 }
 
-const th = { padding: '10px 12px', textAlign: 'left', fontSize: 12, color: '#666', fontWeight: 600, borderBottom: '1px solid #E5E5E5' }
+const th = { padding: '10px 12px', textAlign: 'left', fontSize: 12, color: '#666', fontWeight: 600, borderBottom: '1px solid #E5E5E5', whiteSpace: 'nowrap' }
 const td = { padding: '10px 12px', color: '#04342C' }
 const loadingTd = { ...td, textAlign: 'center', color: '#888', padding: 30 }
 const badge = { padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }
 const viewBtn = { background: '#E8F5EE', color: '#0F8E4E', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer' }
 const labelStyle = { fontSize: 11, color: '#888', marginBottom: 4 }
-const modalBg = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }
-const modalCard = { background: '#fff', borderRadius: 12, padding: 24, maxWidth: 560, width: '100%', maxHeight: '90vh', overflow: 'auto' }
+const modalBg = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflow: 'auto' }
+const modalCard = { background: '#fff', borderRadius: 12, padding: 24, maxWidth: 560, width: '100%', maxHeight: '85vh', overflow: 'auto' }
 const filterBtn = (active) => ({
   padding: '6px 14px', borderRadius: 20,
   border: '1px solid ' + (active ? '#0F8E4E' : '#E5E5E5'),
