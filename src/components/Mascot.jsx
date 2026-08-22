@@ -510,9 +510,9 @@ export default function Mascot() {
       {/* 智能客服對話框 */}
       {chatOpen && (
         <div
-          className="absolute z-50 w-[340px] max-w-[calc(100%-16px)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-[chatSlideUp_0.25s_ease]"
+          className="absolute z-50 w-[300px] max-w-[calc(100%-24px)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-[chatSlideUp_0.25s_ease]"
           style={{
-            left: chatOnLeft ? `${Math.max(8, pos.x - 340 - 12)}px` : `${Math.max(8, Math.min(pos.x + 36, 440 - 344))}px`,
+            left: chatOnLeft ? `${Math.max(12, pos.x - 300 - 12)}px` : `${Math.max(12, Math.min(pos.x + 36, 440 - 312))}px`,
             top: `${Math.min(pos.y + 10, 400)}px`
           }}
         >
@@ -568,16 +568,16 @@ export default function Mascot() {
           )}
 
           {/* 文字輸入 + 語音按鈕 */}
-          <div className="flex items-center gap-2 px-3 py-3 border-t border-gray-100 bg-white">
+          <div className="flex items-center gap-1.5 px-2.5 py-2.5 border-t border-gray-100 bg-white">
             {/* 語音麥克風 */}
             <button
               onClick={toggleVoice}
-              className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors ${
                 isListening ? 'bg-red-500 animate-pulse' : 'bg-brand-100 hover:bg-brand-200'
               }`}
               title={isListening ? '停止聆聽' : '語音輸入'}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isListening ? '#fff' : '#2BB673'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isListening ? '#fff' : '#2BB673'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                 <line x1="12" y1="19" x2="12" y2="23"/>
@@ -591,16 +591,16 @@ export default function Mascot() {
               onChange={e => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="輸入裝修問題…"
-              className="flex-1 min-w-0 px-3 py-2 text-[13px] rounded-full bg-gray-50 border border-gray-200 outline-none focus:border-brand-400 focus:bg-white transition-colors"
+              className="flex-1 min-w-0 px-2.5 py-2 text-[12px] rounded-full bg-gray-50 border border-gray-200 outline-none focus:border-brand-400 focus:bg-white transition-colors"
             />
             {/* 發送按鈕 */}
             <button
               onClick={handleSendText}
               disabled={!inputText.trim()}
-              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
               title="發送"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"/>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"/>
               </svg>
