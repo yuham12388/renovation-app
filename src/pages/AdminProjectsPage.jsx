@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listProjects, listProjectStages, updateProjectStatus, updateStageStatus, deleteRow, createProject } from '../lib/adminApi'
+import { uploadStageMedia, fetchStageMedia, deleteStageMedia } from '../lib/api'
 
 const STATUSES = [
   { value: 'planning', label: '規劃中', color: '#7B5BE0' },
@@ -23,6 +24,7 @@ export default function AdminProjectsPage() {
   const [selected, setSelected] = useState(null)
   const [stages, setStages] = useState([])
   const [showCreate, setShowCreate] = useState(false)
+  const [mediaMap, setMediaMap] = useState({})
 
   const load = () => {
     setLoading(true)
@@ -37,8 +39,37 @@ export default function AdminProjectsPage() {
   const openDetail = async (row) => {
     setSelected(row)
     setStages([])
+    setMediaMap({})
     const s = await listProjectStages(row.id)
     setStages(s)
+    // 載入每個節點的媒體
+    const m = {}
+    await Promise.all(s.map(async st => {
+      const media = await fetchStageMedia(st.id)
+      if (media.length > 0) m[st.id] = media
+    }))
+    setMediaMap(m)
+  }
+
+  // 上傳照片到節點
+  const onUploadMedia = async (stageId, files) => {
+    for (const file of files) {
+      try {
+        await uploadStageMedia(stageId, selected.id, file, '')
+      } catch (e) {
+        alert('上傳失敗：' + e.message)
+      }
+    }
+    // 重新載入
+    const media = await fetchStageMedia(stageId)
+    setMediaMap(prev => ({ ...prev, [stageId]: media }))
+  }
+
+  // 刪除媒體
+  const onDeleteMedia = async (stageId, mediaId) => {
+    await deleteStageMedia(mediaId)
+    const media = await fetchStageMedia(stageId)
+    setMediaMap(prev => ({ ...prev, [stageId]: media.length > 0 ? media : undefined }))
   }
 
   const filtered = filter === 'all' ? rows : rows.filter(r => r.status === filter)
@@ -231,6 +262,9 @@ export default function AdminProjectsPage() {
                         sm={sm}
                         onStatus={onStageStatus}
                         onNote={onStageNote}
+                        media={mediaMap[st.id] || []}
+                        onUpload={(files) => onUploadMedia(st.id, files)}
+                        onDeleteMedia={(mediaId) => onDeleteMedia(st.id, mediaId)}
                       />
                     )
                   })}
@@ -256,9 +290,20 @@ export default function AdminProjectsPage() {
   )
 }
 
-function StageRow({ stage, index, sm, onStatus, onNote }) {
+function StageRow({ stage, index, sm, onStatus, onNote, media, onUpload, onDeleteMedia }) {
   const [showNote, setShowNote] = useState(false)
   const [noteText, setNoteText] = useState(stage.note || '')
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useState({})[0]
+
+  const handleFiles = async (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    setUploading(true)
+    await onUpload(files)
+    setUploading(false)
+    if (fileRef.current) fileRef.current.value = ''
+  }
 
   return (
     <div style={{ padding: '10px 12px', background: '#F5F8F5', borderRadius: 8, fontSize: 13 }}>
@@ -267,6 +312,9 @@ function StageRow({ stage, index, sm, onStatus, onNote }) {
           <span style={{ color: '#999', fontSize: 11, minWidth: 20 }}>{index + 1}.</span>
           <b style={{ color: '#04342C' }}>{stage.name}</b>
           <span style={{ ...badge, background: sm.color + '20', color: sm.color }}>{sm.label}</span>
+          {media.length > 0 && (
+            <span style={{ ...badge, background: '#E6F1FB', color: '#185FA5' }}>{media.length} 張</span>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           {STAGE_STATUSES.map(s => (
@@ -319,6 +367,50 @@ function StageRow({ stage, index, sm, onStatus, onNote }) {
           </div>
         )
       )}
+
+      {/* 照片/影片區 */}
+      <div style={{ marginTop: 6, paddingLeft: 28 }}>
+        <input
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          ref={el => { fileRef.current = el }}
+          onChange={handleFiles}
+          style={{ display: 'none' }}
+          id={`upload-${stage.id}`}
+        />
+        <button
+          onClick={() => document.getElementById(`upload-${stage.id}`).click()}
+          disabled={uploading}
+          style={{
+            fontSize: 11, color: '#fff', background: uploading ? '#ccc' : '#185FA5',
+            border: 'none', borderRadius: 4, padding: '4px 10px', cursor: uploading ? 'default' : 'pointer'
+          }}>
+          {uploading ? '上傳中…' : '+ 上傳照片/影片'}
+        </button>
+
+        {media.length > 0 && (
+          <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+            {media.map((m, mi) => (
+              <div key={m.id || mi} style={{ position: 'relative', width: 56, height: 56, borderRadius: 6, overflow: 'hidden' }}>
+                {m.type === 'video' ? (
+                  <video src={m.url} className="w-full h-full object-cover" preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <img src={m.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                )}
+                <button
+                  onClick={() => onDeleteMedia(m.id)}
+                  style={{
+                    position: 'absolute', top: 2, right: 2, width: 16, height: 16,
+                    borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff',
+                    border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', lineHeight: 1
+                  }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

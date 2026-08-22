@@ -280,6 +280,77 @@ export async function uploadImage(file, bucket = 'case-images') {
   return publicUrl
 }
 
+// ===== 施工節點照片/影片 =====
+
+// 上傳節點媒體（照片或影片）
+export async function uploadStageMedia(stageId, projectId, file, caption = '') {
+  if (!isSupabaseReady) return { url: `mock://media-${Date.now()}`, id: 'mock' }
+  const ext = file.name.split('.').pop()
+  const fileName = `progress/${projectId}/${stageId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const { error: upErr } = await supabase.storage
+    .from('progress-media')
+    .upload(fileName, file)
+  if (upErr) throw upErr
+  const { data: { publicUrl } } = supabase.storage
+    .from('progress-media')
+    .getPublicUrl(fileName)
+  const isVideo = file.type.startsWith('video/')
+  const { data, error: insErr } = await supabase
+    .from('stage_media')
+    .insert({
+      stage_id: stageId,
+      project_id: projectId,
+      url: publicUrl,
+      type: isVideo ? 'video' : 'photo',
+      caption
+    })
+    .select()
+    .single()
+  if (insErr) throw insErr
+  return data
+}
+
+// 查詢某個節點的所有媒體
+export async function fetchStageMedia(stageId) {
+  if (!isSupabaseReady) return []
+  const { data, error } = await supabase
+    .from('stage_media')
+    .select('*')
+    .eq('stage_id', stageId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) return []
+  return data || []
+}
+
+// 查詢某個案件的所有媒體（按節點分組）
+export async function fetchProjectMedia(projectId) {
+  if (!isSupabaseReady) return {}
+  const { data, error } = await supabase
+    .from('stage_media')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+  if (error || !data) return {}
+  // 按 stage_id 分組
+  const grouped = {}
+  for (const item of data) {
+    if (!grouped[item.stage_id]) grouped[item.stage_id] = []
+    grouped[item.stage_id].push(item)
+  }
+  return grouped
+}
+
+// 刪除節點媒體
+export async function deleteStageMedia(mediaId) {
+  if (!isSupabaseReady) return
+  const { error } = await supabase
+    .from('stage_media')
+    .delete()
+    .eq('id', mediaId)
+  if (error) throw error
+}
+
 // ===== 施工節點定義（15 個，按順序）=====
 export const PROJECT_STAGES = [
   '工程保護',

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import { fetchProjectById, PROJECT_STAGES } from '../lib/api'
+import { useState, useEffect, useRef } from 'react'
+import { fetchProjectById, fetchProjectMedia, PROJECT_STAGES } from '../lib/api'
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
@@ -8,13 +8,20 @@ export default function ProjectDetailPage() {
   const [activeTab, setActiveTab] = useState('progress')
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [mediaMap, setMediaMap] = useState({})
+  const [lightbox, setLightbox] = useState(null) // { items, index }
 
   useEffect(() => {
     let mounted = true
     async function load() {
       try {
         const data = await fetchProjectById(id)
-        if (mounted) setProject(data)
+        if (mounted) {
+          setProject(data)
+          // 載入此案件的所有媒體
+          const media = await fetchProjectMedia(id)
+          if (mounted) setMediaMap(media)
+        }
       } catch (e) {
         console.error('[ProjectDetailPage] load error:', e)
       }
@@ -58,6 +65,9 @@ export default function ProjectDetailPage() {
   const progress = project.progress || 0
   const doneCount = stages.filter(s => s.status === 'done').length
   const activeStage = stages.find(s => s.status === 'active')
+
+  // 收集所有媒體用於 lightbox 輪播
+  const allMedia = stages.flatMap(s => mediaMap[s.id] || [])
 
   return (
     <div className="px-5 py-5">
@@ -111,45 +121,74 @@ export default function ProjectDetailPage() {
       {/* 施工進度時間線 */}
       {activeTab === 'progress' && (
         <div className="space-y-0">
-          {stages.map((stage, idx) => (
-            <div key={stage.id || idx} className="flex gap-3">
-              {/* 左側時間線 */}
-              <div className="flex flex-col items-center">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${stageColors[stage.status] || stageColors.pending}`}>
-                  {stageIcons[stage.status] || stageIcons.pending}
-                </div>
-                {idx < stages.length - 1 && (
-                  <div className={`w-0.5 flex-1 min-h-[28px] mt-1 ${stage.status === 'done' ? 'bg-brand-300' : 'bg-cream-200'}`} />
-                )}
-              </div>
-              {/* 右側內容 */}
-              <div className="flex-1 pb-5">
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-semibold ${stage.status === 'done' ? 'text-brand-700' : stage.status === 'active' ? 'text-amber-600' : 'text-gray-400'}`}>
-                    {stage.name}
-                  </span>
-                  {stage.status === 'active' && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-600 font-medium animate-pulse">
-                      進行中
-                    </span>
+          {stages.map((stage, idx) => {
+            const media = mediaMap[stage.id] || []
+            return (
+              <div key={stage.id || idx} className="flex gap-3">
+                {/* 左側時間線 */}
+                <div className="flex flex-col items-center">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${stageColors[stage.status] || stageColors.pending}`}>
+                    {stageIcons[stage.status] || stageIcons.pending}
+                  </div>
+                  {idx < stages.length - 1 && (
+                    <div className={`w-0.5 flex-1 min-h-[28px] mt-1 ${stage.status === 'done' ? 'bg-brand-300' : 'bg-cream-200'}`} />
                   )}
                 </div>
-                {(stage.start_date || stage.end_date) && (
-                  <div className="text-[11px] text-gray-400 mt-0.5">
-                    {stage.start_date}{stage.end_date ? ` ~ ${stage.end_date}` : ''}
+                {/* 右側內容 */}
+                <div className="flex-1 pb-5">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${stage.status === 'done' ? 'text-brand-700' : stage.status === 'active' ? 'text-amber-600' : 'text-gray-400'}`}>
+                      {stage.name}
+                    </span>
+                    {stage.status === 'active' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-600 font-medium animate-pulse">
+                        進行中
+                      </span>
+                    )}
+                    {media.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500 font-medium">
+                        {media.length} 張照片
+                      </span>
+                    )}
                   </div>
-                )}
-                {stage.detail && (
-                  <div className="text-xs text-gray-500 mt-1">{stage.detail}</div>
-                )}
-                {stage.note && (
-                  <div className="text-xs text-gray-400 mt-1.5 px-2 py-1.5 bg-cream-50 rounded-md">
-                    📝 {stage.note}
-                  </div>
-                )}
+                  {(stage.start_date || stage.end_date) && (
+                    <div className="text-[11px] text-gray-400 mt-0.5">
+                      {stage.start_date}{stage.end_date ? ` ~ ${stage.end_date}` : ''}
+                    </div>
+                  )}
+                  {stage.note && (
+                    <div className="text-xs text-gray-400 mt-1.5 px-2 py-1.5 bg-cream-50 rounded-md">
+                      📝 {stage.note}
+                    </div>
+                  )}
+
+                  {/* 照片縮圖區 */}
+                  {media.length > 0 && (
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                      {media.map((m, mi) => (
+                        <div key={m.id || mi}
+                          onClick={() => setLightbox({ items: media, index: mi })}
+                          className="relative w-14 h-14 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity">
+                          {m.type === 'video' ? (
+                            <>
+                              <video src={m.url} className="w-full h-full object-cover" preload="metadata" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </div>
+                            </>
+                          ) : (
+                            <img src={m.url} className="w-full h-full object-cover" loading="lazy" alt={m.caption || ''} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -172,6 +211,86 @@ export default function ProjectDetailPage() {
           ))}
         </div>
       )}
+
+      {/* Lightbox 燈箱 */}
+      {lightbox && (
+        <Lightbox
+          items={lightbox.items}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onIndex={i => setLightbox({ ...lightbox, index: i })}
+        />
+      )}
+    </div>
+  )
+}
+
+// ===== Lightbox 全螢幕照片瀏覽 =====
+function Lightbox({ items, index, onClose, onIndex }) {
+  const touchStartX = useRef(0)
+
+  const prev = () => onIndex((index - 1 + items.length) % items.length)
+  const next = () => onIndex((index + 1) % items.length)
+
+  const item = items[index]
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col"
+      onClick={onClose}
+      onTouchStart={e => touchStartX.current = e.touches[0].clientX}
+      onTouchEnd={e => {
+        const dx = e.changedTouches[0].clientX - touchStartX.current
+        if (dx > 50) prev()
+        else if (dx < -50) next()
+      }}>
+      {/* 頂部列 */}
+      <div className="flex items-center justify-between px-4 py-3 text-white" onClick={e => e.stopPropagation()}>
+        <span className="text-xs">{index + 1} / {items.length}</span>
+        <button onClick={onClose} className="text-white text-2xl leading-none">×</button>
+      </div>
+
+      {/* 媒體內容 */}
+      <div className="flex-1 flex items-center justify-center px-4" onClick={e => e.stopPropagation()}>
+        {item?.type === 'video' ? (
+          <video src={item.url} controls className="max-w-full max-h-[70vh] rounded-lg" />
+        ) : (
+          <img src={item.url} className="max-w-full max-h-[70vh] object-contain rounded-lg" alt={item.caption || ''} />
+        )}
+      </div>
+
+      {/* 底部 */}
+      <div className="px-4 pb-6" onClick={e => e.stopPropagation()}>
+        {item?.caption && (
+          <div className="text-center text-xs text-white/80 mb-3">{item.caption}</div>
+        )}
+        {items.length > 1 && (
+          <div className="flex items-center justify-center gap-8">
+            <button onClick={prev} className="text-white/60 hover:text-white text-sm">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            {/* 縮圖列 */}
+            <div className="flex gap-1 overflow-x-auto max-w-[200px]">
+              {items.map((m, i) => (
+                <div key={i} onClick={() => onIndex(i)}
+                  className={`w-10 h-10 rounded overflow-hidden flex-shrink-0 cursor-pointer border-2 ${i === index ? 'border-white' : 'border-transparent opacity-50'}`}>
+                  {m.type === 'video' ? (
+                    <video src={m.url} className="w-full h-full object-cover" preload="metadata" />
+                  ) : (
+                    <img src={m.url} className="w-full h-full object-cover" alt="" />
+                  )}
+                </div>
+              ))}
+            </div>
+            <button onClick={next} className="text-white/60 hover:text-white text-sm">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
