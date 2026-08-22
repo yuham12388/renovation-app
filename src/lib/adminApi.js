@@ -2,16 +2,19 @@ import { supabase, isSupabaseReady } from './supabase'
 
 // ===== Auth（admin 用）=====
 export async function signIn({ email, password }) {
+  if (!isSupabaseReady) throw new Error('Supabase 尚未連線，請檢查環境變數設定')
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw error
   return data
 }
 
 export async function signOut() {
+  if (!isSupabaseReady) return
   await supabase.auth.signOut()
 }
 
 export async function getAdminProfile() {
+  if (!isSupabaseReady) throw new Error('Supabase 尚未連線')
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 

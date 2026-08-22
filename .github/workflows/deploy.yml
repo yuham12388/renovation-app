@@ -24,6 +24,9 @@ jobs:
           node-version: 22
       - run: npm install --no-package-lock --no-audit --no-fund
       - run: npx vite build --outDir dist --emptyOutDir
+        env:
+          VITE_SUPABASE_URL: https://skiuyeeuaktjpecgboxt.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNraXV5ZWV1YWt0anBlY2dib3h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNTYwMzEsImV4cCI6MjEwMjczMjAzMX0.53jsWU2rzlfmACxEUyt1DD9Hspa0Ljar8R3qlx7HmoQ
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
