@@ -43,6 +43,7 @@ export default function Mascot() {
   const [inputText, setInputText] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [botTyping, setBotTyping] = useState(false)
+  const [showCompanyInfo, setShowCompanyInfo] = useState(false)
   const msgIndexRef = useRef(0)
   const recognitionRef = useRef(null)
   const chatBodyRef = useRef(null)
@@ -213,9 +214,14 @@ export default function Mascot() {
     setBotTyping(true)
     setTimeout(() => {
       const reply = getReply(question)
-      const newEmotion = getEmotion(reply)
+      const newEmotion = getEmotion(reply === 'COMPANY_INFO' ? '公司介紹' : reply)
       setEmotion(newEmotion)
-      setMessages(prev => [...prev, { role: 'bot', text: reply }])
+      if (reply === 'COMPANY_INFO') {
+        setMessages(prev => [...prev, { role: 'bot', text: '以下是孟瀧室內裝修設計有限公司的公司簡介，點擊查看完整資訊 👇' }])
+        setShowCompanyInfo(true)
+      } else {
+        setMessages(prev => [...prev, { role: 'bot', text: reply }])
+      }
       setShowQuick(true)
       setBotTyping(false)
     }, 900)
@@ -268,6 +274,8 @@ export default function Mascot() {
       return '不客氣！有任何裝修問題隨時找我，我很樂意幫忙！'
     if (/你是誰|綠寶|名字|什麼精靈/.test(q))
       return '我是綠寶，裝修幫手的專屬精靈！我代表綠建材和環保裝修理念，有任何裝修問題都可以問我喔！'
+    if (/公司簡介|公司|孟瀧|統編|統一編號|立案|廠商|介紹/.test(q))
+      return 'COMPANY_INFO'
     return '這是個好問題！你可以選擇下方按鈕快速找到你要的服務，或者直接點選首頁的卡片進入。有任何問題都可以再問我喔！'
   }
 
@@ -300,7 +308,8 @@ export default function Mascot() {
     '我要設計我家',
     '我是設計師，需要工班',
     '什麼是綠建材？',
-    '本月有什麼優惠？'
+    '本月有什麼優惠？',
+    '公司簡介'
   ]
 
   const isEntry = location.pathname === '/'
@@ -596,6 +605,113 @@ export default function Mascot() {
                 <polygon points="22 2 15 22 11 13 2 9 22 2"/>
               </svg>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 公司簡介 Modal */}
+      {showCompanyInfo && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center" onClick={() => setShowCompanyInfo(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div onClick={e => e.stopPropagation()}
+            className="relative bg-white rounded-t-3xl w-full max-w-[440px] max-h-[85vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-br from-brand-500 to-brand-600 text-white px-5 pt-5 pb-5 rounded-t-3xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold">孟瀧室內裝修設計有限公司</div>
+                    <div className="text-[10px] opacity-80">統一編號 24838387</div>
+                  </div>
+                </div>
+                <button onClick={() => setShowCompanyInfo(false)} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-lg cursor-pointer">✕</button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-5 py-5">
+              {/* 認證徽章 */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-green-50 border border-green-200">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F8E4E" strokeWidth="2.5"><path d="M9 12l2 2 4-4M21 12c0 5-3.5 7.5-9 9-5.5-1.5-9-4-9-9V5l9-3 9 3v7z" /></svg>
+                  <span className="text-[11px] font-medium text-green-700">政府立案</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="2.5"><path d="M9 12l2 2 4-4M21 12c0 5-3.5 7.5-9 9-5.5-1.5-9-4-9-9V5l9-3 9 3v7z" /></svg>
+                  <span className="text-[11px] font-medium text-blue-700">合格施工廠商</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8A700" strokeWidth="2.5"><path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26z" /></svg>
+                  <span className="text-[11px] font-medium text-amber-700">10+年經驗</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-600 leading-relaxed mb-4">
+                孟瀧室內裝修設計有限公司致力於為每一位屋主打造理想的居住空間。我們提供從設計規劃、工程施工到完工驗收的一條龍服務，擁有經驗豐富的設計團隊與專業施工工班，嚴格把控工程品質與進度。
+              </p>
+
+              {/* 公司資訊 */}
+              <div className="space-y-0 mb-4">
+                <div className="flex items-start gap-2.5 py-2.5 border-b border-gray-100">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F8E4E" strokeWidth="2" className="mt-0.5 flex-shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                  <div className="flex-1">
+                    <div className="text-[11px] text-gray-400">公司地址</div>
+                    <div className="text-xs font-medium text-gray-700">台中市西區</div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 py-2.5 border-b border-gray-100">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F8E4E" strokeWidth="2" className="mt-0.5 flex-shrink-0"><path d="M9 12l2 2 4-4M21 12c0 5-3.5 7.5-9 9-5.5-1.5-9-4-9-9V5l9-3 9 3v7z" /></svg>
+                  <div className="flex-1">
+                    <div className="text-[11px] text-gray-400">統一編號</div>
+                    <div className="text-xs font-medium text-gray-700">24838387</div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 py-2.5 border-b border-gray-100">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F8E4E" strokeWidth="2" className="mt-0.5 flex-shrink-0"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
+                  <div className="flex-1">
+                    <div className="text-[11px] text-gray-400">登記狀態</div>
+                    <div className="text-xs font-medium text-gray-700">政府立案合格施工廠商</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 統計 */}
+              <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                <div className="bg-brand-50 rounded-lg py-2.5 px-1">
+                  <div className="text-lg font-bold text-brand-600">10+</div>
+                  <div className="text-[10px] text-gray-500">年經驗</div>
+                </div>
+                <div className="bg-brand-50 rounded-lg py-2.5 px-1">
+                  <div className="text-lg font-bold text-brand-600">200+</div>
+                  <div className="text-[10px] text-gray-500">完工案例</div>
+                </div>
+                <div className="bg-brand-50 rounded-lg py-2.5 px-1">
+                  <div className="text-lg font-bold text-brand-600">1年</div>
+                  <div className="text-[10px] text-gray-500">工程保固</div>
+                </div>
+              </div>
+
+              {/* 服務項目 */}
+              <div className="mb-4">
+                <div className="text-[11px] font-medium text-gray-500 mb-2">服務項目</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {['室內設計', '舊屋翻新', '全屋定制', '水電工程', '泥作工程', '木作工程', '油漆工程', '系統櫃', '燈具安裝', '清潔服務'].map(tag => (
+                    <span key={tag} className="text-[10px] px-2 py-1 rounded-md bg-gray-100 text-gray-600">{tag}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* CTA */}
+              <button onClick={() => { setShowCompanyInfo(false); setChatOpen(false); navigate('/owner/design') }}
+                className="w-full py-3 rounded-xl bg-brand-500 text-white text-sm font-medium cursor-pointer hover:bg-brand-600 transition-colors">
+                立即諮詢 · 預約設計
+              </button>
+            </div>
           </div>
         </div>
       )}
