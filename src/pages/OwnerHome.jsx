@@ -132,6 +132,40 @@ export default function OwnerHome() {
         ))}
       </div>
 
+      {/* 公司簡介 */}
+      <div className="px-5 pb-5">
+        <div className="card p-5" style={{ background: 'linear-gradient(135deg, #f0f9f3 0%, #e8f5e9 100%)' }}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-brand-500 flex items-center justify-center flex-shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-brand-800">孟瀧室內裝修設計有限公司</h3>
+              <p className="text-[11px] text-gray-500">專業裝修 · 品質保證 · 一條龍服務</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-600 leading-relaxed mb-3">
+            孟瀧室內裝修設計有限公司致力於為每一位屋主打造理想的居住空間。我們提供從設計規劃、工程施工到完工驗收的一條龍服務，擁有經驗豐富的設計團隊與專業施工工班，嚴格把控工程品質與進度。
+          </p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-white/60 rounded-lg py-2 px-1">
+              <div className="text-sm font-bold text-brand-600">10+</div>
+              <div className="text-[10px] text-gray-500">年經驗</div>
+            </div>
+            <div className="bg-white/60 rounded-lg py-2 px-1">
+              <div className="text-sm font-bold text-brand-600">200+</div>
+              <div className="text-[10px] text-gray-500">完工案例</div>
+            </div>
+            <div className="bg-white/60 rounded-lg py-2 px-1">
+              <div className="text-sm font-bold text-brand-600">1年</div>
+              <div className="text-[10px] text-gray-500">工程保固</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 精選案例 */}
       {featuredCases.length > 0 && (
         <div className="px-5 pb-4">

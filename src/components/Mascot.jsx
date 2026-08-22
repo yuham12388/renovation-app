@@ -76,29 +76,52 @@ export default function Mascot() {
       recog.lang = 'zh-TW'
       recog.continuous = false
       recog.interimResults = true
+      recog.maxAlternatives = 1
       recog.onresult = (e) => {
         let transcript = ''
+        let isFinal = false
         for (let i = e.resultIndex; i < e.results.length; i++) {
           transcript += e.results[i][0].transcript
+          if (e.results[i].isFinal) isFinal = true
         }
         setInputText(transcript)
-        if (e.results[e.results.length - 1].isFinal) {
+        if (isFinal) {
           setIsListening(false)
           const text = transcript.trim()
-          if (text && handleAskRef.current) {
-            handleAskRef.current(text)
-            setInputText('')
+          if (text) {
+            // 用 setTimeout 確保在当前 render cycle 之後執行
+            setTimeout(() => {
+              if (handleAskRef.current) {
+                handleAskRef.current(text)
+              }
+              setInputText('')
+            }, 0)
           }
         }
       }
       recog.onerror = (e) => {
         console.warn('語音辨識錯誤:', e.error)
         setIsListening(false)
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          alert('麥克風權限被拒絕，請到瀏覽器設定允許麥克風存取。')
+        }
       }
-      recog.onend = () => setIsListening(false)
+      recog.onend = () => {
+        setIsListening(false)
+        // 如果還在聆聽狀態但 recog 結束了，檢查是否有文字沒送出
+        const currentText = document.querySelector('input[placeholder="輸入裝修問題…"]')
+        if (currentText && currentText.value.trim()) {
+          // 有未送出的文字，自動送出
+          const text = currentText.value.trim()
+          setTimeout(() => {
+            if (handleAskRef.current) {
+              handleAskRef.current(text)
+              setInputText('')
+            }
+          }, 0)
+        }
+      }
       recognitionRef.current = recog
-    } else {
-      console.warn('此瀏覽器不支援 SpeechRecognition')
     }
     return () => {
       try { recognitionRef.current?.stop() } catch(_) {}

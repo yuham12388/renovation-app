@@ -89,7 +89,7 @@ export default function EntryPage() {
               <div className="text-[10px] text-gray-500">優惠代碼</div>
               <div className="text-sm font-bold text-gray-800 tracking-wider">GREEN2026</div>
             </div>
-            <button onClick={() => { sessionStorage.setItem('promoCode', 'GREEN2026'); navigate('/owner') }} className="px-4 py-2.5 rounded-lg text-white text-xs font-semibold"
+            <button onClick={() => { try { sessionStorage.setItem('promoCode', 'GREEN2026') } catch(_){} navigate('/owner/design', { state: { promo: 'GREEN2026' } }) }} className="px-4 py-2.5 rounded-lg text-white text-xs font-semibold"
               style={{ background: '#558B2F' }}>
               立即預約
             </button>
